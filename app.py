@@ -46,6 +46,8 @@ app = Flask(__name__,
             template_folder=os.path.join(BUNDLE_DIR, 'templates'),
             static_folder=os.path.join(BUNDLE_DIR, 'static'))
 
+app.config["PROPAGATE_EXCEPTIONS"] = True
+
 # Persist secret key so sessions survive server restarts
 _secret_file = os.path.join(BASE_DIR, 'data', '.secret_key')
 if os.path.exists(_secret_file):
