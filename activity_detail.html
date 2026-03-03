@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block title %}{{ activity.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+        <h1 class="page-title">{{ activity.title }}</h1>
+        <div class="activity-meta-header">
+            <span class="status-badge status-{{ activity.status }}">{{ activity.status | title }}</span>
+            {% if activity.is_urgent %}<span class="urgent-badge">URGENT</span>{% endif %}
+            <span class="priority-badge priority-{{ activity.priority }}">{{ activity.priority | title }}</span>
+            {% if activity.customer %}<span class="meta-pill">{{ activity.customer }}</span>{% endif %}
+            {% if activity.device %}<span class="meta-pill">{{ activity.device }}</span>{% endif %}
+            {% if activity.category %}<span class="meta-pill">{{ activity.category }}</span>{% endif %}
+        </div>
+    </div>
+    {% if activity.progress_type != 'none' and progress is not none %}
+    <div class="detail-progress-wrap">
+        {% set r = 34 %}
+        {% set circ = 2 * 3.14159 * r %}
+        {% set dash = (progress / 100) * circ %}
+        {% set gap  = circ - dash %}
+        {% if progress >= 75 %}{% set pc = '#27AE60' %}{% elif progress >= 40 %}{% set pc = '#F39C12' %}{% else %}{% set pc = '#E74C3C' %}{% endif %}
+        <svg class="progress-donut-lg" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="{{ r }}" fill="none" stroke="#E8ECF0" stroke-width="7"/>
+            <circle cx="40" cy="40" r="{{ r }}" fill="none"
+                    stroke="{{ pc }}" stroke-width="7"
+                    stroke-dasharray="{{ '%.1f'|format(dash) }} {{ '%.1f'|format(gap) }}"
+                    stroke-linecap="round" transform="rotate(-90 40 40)"/>
+            <text x="40" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="{{ pc }}">{{ progress | int }}%</text>
+        </svg>
+        <div class="detail-progress-label">
+            <strong>{{ progress_types[activity.progress_type] }}</strong>
+            {% if activity.progress_type in ('machine_count','units_bonded') %}
+            <span>{{ activity.progress_current | int }} / {{ activity.progress_total | int }} {{ activity.progress_unit }}</span>
+            {% elif activity.progress_type == 'done_not_done' %}
+            <span>{% if progress == 100 %}Done ✓{% else %}Not Yet{% endif %}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if activity.description %}
+<div class="card description-card">
+    <h3>Description</h3>
+    <p>{{ activity.description }}</p>
+    {% if activity.due_date %}<p class="due-info">&#128197; Due: <strong>{{ activity.due_date }}</strong></p>{% endif %}
+    <p class="created-info">Created by {{ activity.created_by_name }} on {{ activity.created_at }}</p>
+</div>
+{% endif %}
+
+{% if activity_files %}
+<div class="card">
+    <h3>Activity Files</h3>
+    <div class="file-list">
+        {% for f in activity_files %}
+        <a href="{{ url_for('serve_file', activity_id=activity.id, filename=f.filename) }}" class="file-item" target="_blank">
+            &#128196; {{ f.original_name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- PROGRESS UPDATE PANEL -->
+{% if activity.progress_type != 'none' %}
+<div class="card progress-update-card">
+    <h3>Update Progress — {{ progress_types[activity.progress_type] }}</h3>
+
+    {% if activity.progress_type == 'checklist' %}
+    <div class="checklist-list">
+        {% for item in checklist %}
+        <form method="POST" action="{{ url_for('toggle_checklist', activity_id=activity.id, item_id=item.id) }}" class="checklist-row">
+            <button type="submit" class="checklist-check {% if item.is_completed %}checked{% endif %}" title="Toggle">
+                {% if item.is_completed %}&#10003;{% else %}&nbsp;{% endif %}
+            </button>
+            <span class="checklist-text {% if item.is_completed %}done{% endif %}">{{ item.item_text }}</span>
+            {% if item.is_completed and item.completed_by_name %}
+            <span class="checklist-meta">{{ item.completed_by_name }} &bull; {{ item.completed_at }}</span>
+            {% endif %}
+        </form>
+        {% else %}
+        <p class="text-muted">No checklist items yet.</p>
+        {% endfor %}
+    </div>
+    {% if session.get('role') == 'admin' %}
+    <form method="POST" action="{{ url_for('admin_add_checklist_item', activity_id=activity.id) }}" class="add-checklist-form">
+        <input type="text" name="item_text" class="form-control" placeholder="Add new checklist item…" required>
+        <button type="submit" class="btn btn-sm btn-primary">+ Add</button>
+    </form>
+    {% endif %}
+
+    {% elif activity.progress_type in ('machine_count','units_bonded') %}
+    <form method="POST" action="{{ url_for('update_progress', activity_id=activity.id) }}" class="progress-form-inline">
+        <label>{{ 'Machines completed' if activity.progress_type == 'machine_count' else 'Units bonded' }}</label>
+        <div class="progress-input-row">
+            <input type="number" name="progress_current" class="form-control w-120"
+                   value="{{ activity.progress_current | int }}"
+                   min="0" max="{{ activity.progress_total | int }}" step="1" required>
+            <span class="progress-of">/ {{ activity.progress_total | int }} {{ activity.progress_unit }}</span>
+            <button type="submit" class="btn btn-primary">Update</button>
+        </div>
+    </form>
+
+    {% elif activity.progress_type == 'done_not_done' %}
+    <form method="POST" action="{{ url_for('update_progress', activity_id=activity.id) }}" class="progress-form-inline">
+        <div class="done-toggle-row">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_done" value="1"
+                       {% if progress == 100 %}checked{% endif %} onchange="this.form.submit()">
+                <span>Mark as Done</span>
+            </label>
+            <span class="done-status {% if progress == 100 %}text-success{% else %}text-muted{% endif %}">
+                {% if progress == 100 %}&#10003; Completed{% else %}&#9675; In Progress{% endif %}
+            </span>
+        </div>
+    </form>
+
+    {% elif activity.progress_type == 'custom' %}
+    <form method="POST" action="{{ url_for('update_progress', activity_id=activity.id) }}" class="progress-form-inline">
+        <label>Completion percentage</label>
+        <div class="progress-input-row">
+            <input type="number" name="progress_current" class="form-control w-120"
+                   value="{{ activity.progress_current | int }}" min="0" max="100" step="1" required>
+            <span class="progress-of">%</span>
+            <button type="submit" class="btn btn-primary">Update</button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- LOG UPDATE FORM -->
+<div class="card update-form-card">
+    <h3>Log Activity Update</h3>
+    <form method="POST" action="{{ url_for('add_update', activity_id=activity.id) }}" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="update_text">Update Details</label>
+            <textarea id="update_text" name="update_text" class="form-control" rows="4"
+                      placeholder="Describe your activity update for this shift…" required></textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group flex-1">
+                <label>Attach Photos (optional)</label>
+                <input type="file" name="photos" class="form-control-file" multiple accept="image/*">
+                <small class="form-hint">Auto-saved as JPEG. Multiple files OK.</small>
+            </div>
+            <div class="form-group flex-1">
+                <label>Attach Files (optional)</label>
+                <input type="file" name="files" class="form-control-file" multiple
+                       accept=".xlsx,.xls,.pptx,.ppt,.pdf,.docx,.doc,.csv,.txt">
+                <small class="form-hint">Excel, PowerPoint, PDF, Word, CSV, TXT</small>
+            </div>
+        </div>
+        <div class="form-footer">
+            <div class="auto-fields">
+                <span class="auto-field">Shift <strong>{{ current_shift }}</strong></span>
+                <span class="auto-field">{{ time_slot }}</span>
+                <span class="auto-field">{{ now.strftime('%Y-%m-%d %H:%M') }}</span>
+                <span class="auto-field">{{ session.get('full_name') }}</span>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Update</button>
+        </div>
+    </form>
+</div>
+
+<!-- UPDATE HISTORY -->
+<div class="updates-section">
+    <h3 class="section-title">Update History ({{ updates|length }})</h3>
+    {% for item in updates %}
+    <div class="update-card">
+        <div class="update-header">
+            <div class="update-user-info">
+                <div class="user-avatar">{{ item.entry.user_name[0] | upper }}</div>
+                <div>
+                    <span class="update-user-name">{{ item.entry.user_name }}</span>
+                    <span class="update-shift-badge">Shift {{ item.entry.shift }}</span>
+                </div>
+            </div>
+            <span class="update-timestamp">{{ item.entry.created_at }}</span>
+        </div>
+        <div class="update-body"><p>{{ item.entry.update_text }}</p></div>
+        {% if item.photos %}
+        <div class="update-photos">
+            {% for photo in item.photos %}
+            <a href="{{ url_for('serve_photo', filename=photo.filename) }}" target="_blank" class="photo-thumb">
+                <img src="{{ url_for('serve_photo', filename=photo.filename) }}" alt="{{ photo.original_name }}" loading="lazy">
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if item.files %}
+        <div class="update-files">
+            {% for f in item.files %}
+            <a href="{{ url_for('serve_file', activity_id=activity.id, filename=f.filename) }}" class="file-item" target="_blank">
+                &#128196; {{ f.original_name }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state small"><p>No updates yet. Be the first to log one!</p></div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Manage Users</h1>
+        <p class="page-subtitle">Add and manage Wire Bond Group user accounts</p>
+    </div>
+    <button class="btn btn-primary" onclick="toggleModal('createUserModal')">
+        <svg style="width:13px;height:13px;vertical-align:middle;" viewBox="0 0 20 20" fill="currentColor"><path d="M10 4a1 1 0 011 1v4h4a1 1 0 010 2h-4v4a1 1 0 01-2 0v-4H5a1 1 0 010-2h4V5a1 1 0 011-1z"/></svg>
+        New User
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Full Name</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Type</th>
+                    <th>Shift</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="{% if not u.is_active %}row-inactive{% endif %}">
+                    <td><strong>{{ u.full_name }}</strong></td>
+                    <td>{{ u.username }}</td>
+                    <td><span class="role-badge role-{{ u.role }}">{{ u.role | title }}</span></td>
+                    <td><span class="engineer-type-badge eng-{{ (u.engineer_type or 'Process') | lower }}">{{ (u.engineer_type or 'Process') }}</span></td>
+                    <td>
+                        <span class="shift-letter-badge shift-{{ u.shift | lower }}">
+                            {{ u.shift }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="status-dot active"></span> Active
+                        {% else %}
+                        <span class="status-dot inactive"></span> Inactive
+                        {% endif %}
+                    </td>
+                    <td>{{ u.created_at }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="openEditUserModal({{ u.id }}, '{{ u.full_name | replace("'", "\\'") }}', '{{ u.role }}', '{{ u.shift }}', {{ 1 if u.is_active else 0 }}, '{{ u.engineer_type or 'Process' }}')">Edit</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Shift Legend -->
+<div class="card" style="padding:14px 20px;">
+    <div class="shift-legend">
+        <span class="shift-legend-title">Shift Schedule</span>
+        <div class="shift-legend-items">
+            <span><span class="shift-letter-badge shift-a">A</span> Day &mdash; 06:30 – 18:30</span>
+            <span><span class="shift-letter-badge shift-b">B</span> Night &mdash; 18:30 – 06:30</span>
+            <span><span class="shift-letter-badge shift-c">C</span> Day &mdash; 06:30 – 18:30</span>
+            <span><span class="shift-letter-badge shift-d">D</span> Night &mdash; 18:30 – 06:30</span>
+            <span><span class="shift-letter-badge shift-ds">DS</span> Day Shift &mdash; Mon–Thu 08:00–18:15 &nbsp;|&nbsp; Fri 08:00–13:00 &nbsp;|&nbsp; Sat–Sun Off</span>
+        </div>
+        <span class="form-hint" style="margin-top:4px;">A/B/C/D are 12-hour rotating shifts. DS is a normal Mon–Fri day shift schedule.</span>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div id="createUserModal" class="modal" style="display:none;">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Create New User</h3>
+            <button class="modal-close" onclick="toggleModal('createUserModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin_create_user') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" name="full_name" class="form-control" required placeholder="e.g., Leomar Dela Cruz">
+                </div>
+                <div class="form-group">
+                    <label>Username *</label>
+                    <input type="text" name="username" class="form-control" required placeholder="e.g., leomar.dc">
+                </div>
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" name="password" class="form-control" required placeholder="Enter password">
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Role</label>
+                        <select name="role" class="form-control">
+                            <option value="user" selected>User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Engineer Type</label>
+                        <select name="engineer_type" class="form-control">
+                            <option value="Process" selected>Process Engineer</option>
+                            <option value="Equipment">Equipment Engineer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Shift</label>
+                        <select name="shift" class="form-control">
+                            <option value="A">Shift A (Day)</option>
+                            <option value="B">Shift B (Night)</option>
+                            <option value="C">Shift C (Day)</option>
+                            <option value="D">Shift D (Night)</option>
+                            <option value="DS">Day Shift — Mon–Fri (Normal)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="toggleModal('createUserModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal" style="display:none;">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close" onclick="toggleModal('editUserModal')">&times;</button>
+        </div>
+        <form method="POST" id="editUserForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" name="full_name" id="edituser_full_name" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Role</label>
+                        <select name="role" id="edituser_role" class="form-control">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Engineer Type</label>
+                        <select name="engineer_type" id="edituser_engineer_type" class="form-control">
+                            <option value="Process">Process Engineer</option>
+                            <option value="Equipment">Equipment Engineer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Shift</label>
+                        <select name="shift" id="edituser_shift" class="form-control">
+                            <option value="A">Shift A (Day)</option>
+                            <option value="B">Shift B (Night)</option>
+                            <option value="C">Shift C (Day)</option>
+                            <option value="D">Shift D (Night)</option>
+                            <option value="DS">Day Shift — Mon–Fri (Normal)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_active" id="edituser_is_active" value="1">
+                        <span>Account Active</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>New Password <span style="font-weight:400;opacity:.7;">(leave blank to keep current)</span></label>
+                    <input type="password" name="new_password" class="form-control" placeholder="Enter new password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="toggleModal('editUserModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditUserModal(id, fullName, role, shift, isActive, engineerType) {
+    document.getElementById('editUserForm').action = '/admin/users/' + id + '/edit';
+    document.getElementById('edituser_full_name').value = fullName;
+    document.getElementById('edituser_role').value = role;
+    document.getElementById('edituser_shift').value = shift;
+    document.getElementById('edituser_is_active').checked = isActive == 1;
+    document.getElementById('edituser_engineer_type').value = engineerType || 'Process';
+    toggleModal('editUserModal');
+}
+</script>
+{% endblock %}

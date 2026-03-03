@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% block title %}Shift Calendar Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="back-link">&larr; Dashboard</a>
+        <h1 class="page-title">Shift Calendar Management</h1>
+        <p class="page-subtitle">Manage public holidays, shift overrides, and individual user schedules</p>
+    </div>
+</div>
+
+<!-- Calendar Preview -->
+<div class="calendar-card" style="margin-bottom:16px;">
+    <div class="calendar-header">
+        <h3>
+            <svg style="width:15px;height:15px;vertical-align:middle;margin-right:6px;opacity:0.5;" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 8h16M6 2v4M14 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            {{ '%02d' | format(month) }}/{{ year }} Calendar Preview
+        </h3>
+        <div class="calendar-nav">
+            {% set prev_month = month - 1 if month > 1 else 12 %}
+            {% set prev_year = year if month > 1 else year - 1 %}
+            {% set next_month = month + 1 if month < 12 else 1 %}
+            {% set next_year = year if month < 12 else year + 1 %}
+            <a href="{{ url_for('admin_calendar', year=prev_year, month=prev_month) }}" class="calendar-nav-btn">&larr; Prev</a>
+            <span class="calendar-month-label">{{ ['','January','February','March','April','May','June','July','August','September','October','November','December'][month] }} {{ year }}</span>
+            <a href="{{ url_for('admin_calendar', year=next_year, month=next_month) }}" class="calendar-nav-btn">Next &rarr;</a>
+        </div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="calendar-grid">
+            <thead>
+                <tr>
+                    <th>WW</th>
+                    <th>Mon</th>
+                    <th>Tue</th>
+                    <th>Wed</th>
+                    <th>Thu</th>
+                    <th>Fri</th>
+                    <th>Sat</th>
+                    <th>Sun</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for week in cal_data %}
+                <tr>
+                    <td class="ww-col">WW{{ week.ww }}</td>
+                    {% for day in week.days %}
+                    <td class="cal-day-cell {% if not day.in_month %}cal-day-out{% endif %} {% if day.is_today %}cal-day-today{% endif %} {% if day.holiday %}cal-day-holiday{% endif %}"
+                        onclick='openDayModal({{ day.date | tojson }}, {{ day.weekday | tojson }}, {{ (day.user_overrides or []) | tojson }})'
+                        style="cursor:pointer;" title="Click to manage {{ day.date }}">
+                        <div class="cal-day-num">{{ day.day }}</div>
+                        {% if day.holiday %}
+                        <span class="cal-holiday-name">{{ day.holiday }}</span>
+                        {% endif %}
+                        <div class="cal-crews">
+                            {% for crew in ['A','B','C','D'] %}
+                            {% set shift = day.crews[crew] %}
+                            {% set crew_member_list = crew_users.get(crew, []) %}
+                            {% set tooltip_names = crew_member_list | map(attribute='name') | join(', ') %}
+                            {% if shift == 'O' %}
+                            <span class="cal-crew-tag crew-off" title="Crew {{ crew }} OFF{% if tooltip_names %}: {{ tooltip_names }}{% endif %}">{{ crew }}:O</span>
+                            {% elif shift == 'REP' %}
+                            <span class="cal-crew-tag crew-rep" title="Crew {{ crew }} REP{% if tooltip_names %}: {{ tooltip_names }}{% endif %}">{{ crew }}:R</span>
+                            {% else %}
+                            <span class="cal-crew-tag crew-{{ crew | lower }}" title="Crew {{ crew }} {{ 'Day' if shift == 'D' else 'Night' }}{% if tooltip_names %}: {{ tooltip_names }}{% endif %}">{{ crew }}:{{ shift }}</span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if day.user_overrides %}
+                        <div class="cal-user-overrides">
+                            {% for uo in day.user_overrides %}
+                            <span class="cal-uo-badge cal-uo-{{ uo.type | lower }}" title="{{ uo.full_name }}: {{ uo.type }}{% if uo.note %} — {{ uo.note }}{% endif %}">
+                                {{ uo.full_name.split(' ')[0][:6] }}:{{ uo.type[:2] }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="calendar-legend">
+        <span class="calendar-legend-item"><span class="cal-crew-tag crew-a" style="width:auto;padding:0 4px;">A:D</span> Day Shift</span>
+        <span class="calendar-legend-item"><span class="cal-crew-tag crew-a" style="width:auto;padding:0 4px;">A:N</span> Night Shift</span>
+        <span class="calendar-legend-item"><span class="cal-crew-tag crew-off" style="width:auto;padding:0 4px;">X:O</span> Off / Rest Day</span>
+        <span class="calendar-legend-item"><span class="cal-crew-tag crew-rep" style="width:auto;padding:0 4px;">X:R</span> Replacement</span>
+        <span class="calendar-legend-item"><span class="cal-uo-badge cal-uo-ot" style="display:inline;">OT</span> Overtime</span>
+        <span class="calendar-legend-item"><span class="cal-uo-badge cal-uo-leave" style="display:inline;">LV</span> Leave</span>
+        <span class="calendar-legend-item"><span class="cal-uo-badge cal-uo-off" style="display:inline;">OF</span> Off</span>
+    </div>
+</div>
+
+<!-- Edit Day Modal (User Overrides) -->
+<div id="dayModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="dayModalTitle">Edit Day</h3>
+            <button class="modal-close" onclick="toggleModal('dayModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Add User Override -->
+            <div class="section-divider" style="margin-bottom:12px;"><span>Add User Schedule Override</span></div>
+            <form method="POST" action="{{ url_for('admin_add_user_override') }}">
+                <input type="hidden" name="date" id="dayModalDate">
+                <div class="form-row" style="margin-bottom:8px;">
+                    <div class="form-group flex-1">
+                        <label>User</label>
+                        <select name="user_id" class="form-control" required>
+                            <option value="">-- Select User --</option>
+                            {% for u in all_users %}
+                            <option value="{{ u.id }}">{{ u.full_name }} (Shift {{ u.shift }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Type</label>
+                        <select name="type" class="form-control" required>
+                            <option value="">-- Select --</option>
+                            <option value="OT">OT (Overtime)</option>
+                            <option value="LEAVE">Leave</option>
+                            <option value="OFF">Off / Rest</option>
+                            <option value="SWAP">Swap</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Note (optional)</label>
+                        <input type="text" name="note" class="form-control" placeholder="e.g., Sick leave, Swap with John">
+                    </div>
+                    <div class="form-group" style="align-self:flex-end;">
+                        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Existing User Overrides for this day -->
+            <div class="section-divider" style="margin:16px 0 10px;"><span>Current User Overrides</span></div>
+            <div id="dayModalOverrides">
+                <p class="text-center" style="color:var(--text-secondary);font-size:12px;">Select a day from the calendar to see overrides.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="toggleModal('dayModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Management Cards -->
+<div class="admin-cal-section">
+    <!-- Public Holidays -->
+    <div class="card">
+        <h3>
+            <svg style="width:14px;height:14px;vertical-align:middle;margin-right:4px;" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2l2.5 5.5L18 8.5l-4 4 1 6L10 16l-5 2.5 1-6-4-4 5.5-1z"/></svg>
+            Public Holidays
+        </h3>
+        <form method="POST" action="{{ url_for('admin_add_holiday') }}" style="margin-bottom:14px;">
+            <div class="form-row">
+                <div class="flex-1">
+                    <input type="date" name="date" class="form-control" required>
+                </div>
+                <div class="flex-1">
+                    <input type="text" name="name" class="form-control" placeholder="Holiday name" required>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                </div>
+            </div>
+        </form>
+        <div class="table-wrapper" style="max-height:300px;overflow-y:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Date</th><th>Name</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for h in holidays %}
+                    <tr>
+                        <td>{{ h.date }}</td>
+                        <td>{{ h.name }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_delete_holiday', hid=h.id) }}" class="inline-form"
+                                  onsubmit="return confirm('Remove holiday?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center" style="padding:16px;color:var(--text-secondary);">No holidays added.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Shift Overrides (Crew-level) -->
+    <div class="card">
+        <h3>
+            <svg style="width:14px;height:14px;vertical-align:middle;margin-right:4px;" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4h12v12H4z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Crew Shift Overrides (REP / OFF)
+        </h3>
+        <form method="POST" action="{{ url_for('admin_add_override') }}" style="margin-bottom:14px;">
+            <div class="form-row" style="margin-bottom:8px;">
+                <div class="flex-1">
+                    <input type="date" name="date" class="form-control" required>
+                </div>
+                <div class="flex-1">
+                    <select name="crew" class="form-control" required>
+                        <option value="">Crew</option>
+                        <option value="A">Crew A</option>
+                        <option value="B">Crew B</option>
+                        <option value="C">Crew C</option>
+                        <option value="D">Crew D</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <select name="override_type" class="form-control" required>
+                        <option value="">Type</option>
+                        <option value="REP">REP (Replacement)</option>
+                        <option value="OFF">OFF (Rest Day)</option>
+                        <option value="D">Day Shift</option>
+                        <option value="N">Night Shift</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="flex-1">
+                    <input type="text" name="note" class="form-control" placeholder="Note (optional)">
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary btn-sm">Add Override</button>
+                </div>
+            </div>
+        </form>
+        <div class="table-wrapper" style="max-height:300px;overflow-y:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Date</th><th>Crew</th><th>Type</th><th>Note</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for o in overrides %}
+                    <tr>
+                        <td>{{ o.date }}</td>
+                        <td><span class="shift-badge shift-{{ o.crew | lower }}">{{ o.crew }}</span></td>
+                        <td><strong>{{ o.override_type }}</strong></td>
+                        <td>{{ o.note or '-' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_delete_override', oid=o.id) }}" class="inline-form"
+                                  onsubmit="return confirm('Remove override?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center" style="padding:16px;color:var(--text-secondary);">No overrides added.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openDayModal(dateStr, weekday, userOverrides) {
+    document.getElementById('dayModalTitle').textContent = 'Manage Day: ' + dateStr + ' (' + weekday + ')';
+    document.getElementById('dayModalDate').value = dateStr;
+
+    var container = document.getElementById('dayModalOverrides');
+    if (!userOverrides || userOverrides.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-secondary);font-size:12px;text-align:center;padding:8px 0;">No user overrides for this day.</p>';
+    } else {
+        var html = '<table class="data-table" style="font-size:12px;"><thead><tr><th>User</th><th>Type</th><th>Note</th><th></th></tr></thead><tbody>';
+        userOverrides.forEach(function(uo) {
+            html += '<tr>';
+            html += '<td>' + uo.full_name + '</td>';
+            html += '<td><span class="cal-uo-badge cal-uo-' + uo.type.toLowerCase() + '" style="display:inline;">' + uo.type + '</span></td>';
+            html += '<td>' + (uo.note || '-') + '</td>';
+            html += '<td><form method="POST" action="/admin/calendar/user-override/' + uo.id + '/delete" class="inline-form" onsubmit="return confirm(\'Remove this override?\')"><button type="submit" class="btn btn-sm btn-danger">Remove</button></form></td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    toggleModal('dayModal');
+}
+</script>
+{% endblock %}

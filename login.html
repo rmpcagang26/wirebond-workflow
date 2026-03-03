@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+
+    <!-- Decorative wire bond arcs behind card -->
+    <svg class="login-bg-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- bond pads -->
+        <circle cx="80"  cy="520" r="8" fill="#FFD700" opacity="0.4"/>
+        <circle cx="520" cy="520" r="8" fill="#FFD700" opacity="0.4"/>
+        <circle cx="80"  cy="80"  r="8" fill="#FFD700" opacity="0.4"/>
+        <circle cx="520" cy="80"  r="8" fill="#FFD700" opacity="0.4"/>
+        <circle cx="300" cy="300" r="8" fill="#2E86C1" opacity="0.5"/>
+        <!-- wire arcs -->
+        <path d="M80 520 Q80 60 300 300"  fill="none" stroke="#FFD700" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+        <path d="M520 520 Q520 60 300 300" fill="none" stroke="#FFD700" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+        <path d="M80 80 Q300 80 300 300"   fill="none" stroke="#2E86C1" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+        <path d="M520 80 Q300 80 300 300"  fill="none" stroke="#2E86C1" stroke-width="1.5" opacity="0.25" stroke-linecap="round"/>
+        <!-- extra decorative loops -->
+        <ellipse cx="300" cy="420" rx="180" ry="40" fill="none" stroke="#fff" stroke-width="1" opacity="0.08"/>
+        <ellipse cx="300" cy="180" rx="180" ry="40" fill="none" stroke="#fff" stroke-width="1" opacity="0.08"/>
+    </svg>
+
+    <div class="login-card">
+        <!-- LOGO -->
+        <div class="login-header">
+            <div class="login-logo-wrap">
+                <svg class="login-logo-svg" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="72" height="72" rx="16" fill="#0D2137"/>
+                    <!-- QFP IC package body -->
+                    <rect x="18" y="18" width="36" height="36" rx="4" fill="#1B4F72" stroke="#2E86C1" stroke-width="1.2"/>
+                    <!-- Die center -->
+                    <rect x="26" y="26" width="20" height="20" rx="2" fill="#2E86C1" opacity="0.5"/>
+                    <rect x="30" y="30" width="12" height="12" rx="1" fill="#3498DB" opacity="0.3"/>
+                    <!-- Bond pads - top (5 pads) -->
+                    <rect x="22" y="12" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="29" y="12" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="36" y="12" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="43" y="12" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <!-- Bond pads - bottom -->
+                    <rect x="22" y="55.5" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="29" y="55.5" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="36" y="55.5" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="43" y="55.5" width="5" height="4.5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <!-- Bond pads - left -->
+                    <rect x="10.5" y="22" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="10.5" y="29" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="10.5" y="36" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="10.5" y="43" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <!-- Bond pads - right -->
+                    <rect x="57" y="22" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="57" y="29" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="57" y="36" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <rect x="57" y="43" width="4.5" height="5" rx="0.8" fill="#7FB3D3" opacity="0.85"/>
+                    <!-- Gold wire bonds (top) -->
+                    <path d="M24.5 16.5 Q24.5 20 25 26" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M31.5 16.5 Q31.5 21 31.5 26" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M38.5 16.5 Q38.5 21 38.5 26" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M45.5 16.5 Q45.5 20 45 26" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <!-- Gold wire bonds (bottom) -->
+                    <path d="M24.5 55.5 Q24.5 52 25 46" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M31.5 55.5 Q31.5 51 31.5 46" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M38.5 55.5 Q38.5 51 38.5 46" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M45.5 55.5 Q45.5 52 45 46" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <!-- Gold wire bonds (left) -->
+                    <path d="M15 24.5 Q17 24.5 26 25" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M15 31.5 Q19 31.5 26 31.5" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M15 38.5 Q19 38.5 26 38.5" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M15 45.5 Q17 45.5 26 45" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <!-- Gold wire bonds (right) -->
+                    <path d="M57 24.5 Q55 24.5 46 25" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M57 31.5 Q53 31.5 46 31.5" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M57 38.5 Q53 38.5 46 38.5" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M57 45.5 Q55 45.5 46 45" fill="none" stroke="#F0B93B" stroke-width="1.5" stroke-linecap="round"/>
+                    <!-- Ball bonds (gold dots) - top -->
+                    <circle cx="24.5" cy="16.5" r="2" fill="#F0B93B"/>
+                    <circle cx="31.5" cy="16.5" r="2" fill="#F0B93B"/>
+                    <circle cx="38.5" cy="16.5" r="2" fill="#F0B93B"/>
+                    <circle cx="45.5" cy="16.5" r="2" fill="#F0B93B"/>
+                    <!-- Ball bonds - bottom -->
+                    <circle cx="24.5" cy="55.5" r="2" fill="#F0B93B"/>
+                    <circle cx="31.5" cy="55.5" r="2" fill="#F0B93B"/>
+                    <circle cx="38.5" cy="55.5" r="2" fill="#F0B93B"/>
+                    <circle cx="45.5" cy="55.5" r="2" fill="#F0B93B"/>
+                    <!-- Ball bonds - left -->
+                    <circle cx="15" cy="24.5" r="2" fill="#F0B93B"/>
+                    <circle cx="15" cy="31.5" r="2" fill="#F0B93B"/>
+                    <circle cx="15" cy="38.5" r="2" fill="#F0B93B"/>
+                    <circle cx="15" cy="45.5" r="2" fill="#F0B93B"/>
+                    <!-- Ball bonds - right -->
+                    <circle cx="57" cy="24.5" r="2" fill="#F0B93B"/>
+                    <circle cx="57" cy="31.5" r="2" fill="#F0B93B"/>
+                    <circle cx="57" cy="38.5" r="2" fill="#F0B93B"/>
+                    <circle cx="57" cy="45.5" r="2" fill="#F0B93B"/>
+                </svg>
+            </div>
+            <div class="login-title-block">
+                <h1 class="login-main-title">Wire Bond Group</h1>
+                <p class="login-sub-title">Activity Flow System</p>
+            </div>
+        </div>
+
+        <form method="POST" class="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control"
+                       placeholder="Enter your username" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </form>
+
+        <div class="login-footer">
+            <div class="login-shift-row">
+                <span class="lf-label">Current time slot:</span>
+                <span class="time-slot-pill">{{ time_slot }}</span>
+            </div>
+            <p class="login-date">{{ now.strftime('%A, %B %d, %Y  |  %I:%M %p') }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

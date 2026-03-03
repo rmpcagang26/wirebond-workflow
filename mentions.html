@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}My Mentions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Mentions</h1>
+        <p class="page-subtitle">Notifications and mentions from admin</p>
+    </div>
+</div>
+
+<div class="mentions-list">
+    {% for m in mentions %}
+    <div class="mention-card {% if not m.is_read %}unread{% endif %}">
+        <div class="mention-header">
+            <span class="mention-from">From: <strong>{{ m.from_name }}</strong></span>
+            <span class="mention-time">{{ m.created_at }}</span>
+        </div>
+        <div class="mention-body">
+            <p class="mention-activity">
+                Re: <a href="{{ url_for('activity_detail', activity_id=m.activity_id) }}">{{ m.activity_title }}</a>
+            </p>
+            <p class="mention-message">{{ m.message }}</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">&#128172;</div>
+        <h3>No mentions</h3>
+        <p>You have no mentions or notifications at this time.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

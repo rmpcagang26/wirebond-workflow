@@ -1,0 +1,9 @@
+# Wire Bond Group — Activity Flow System
+# Client Configuration
+#
+# Set the IP address of the Admin PC running the server.
+# To find the Admin PC's IP: open CMD and type 'ipconfig'
+# Look for 'IPv4 Address' under your Wi-Fi or Ethernet adapter.
+#
+SERVER_IP=192.168.1.100
+SERVER_PORT=5000

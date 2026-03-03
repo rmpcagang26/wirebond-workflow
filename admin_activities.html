@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+{% block title %}Manage Activities{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Manage Activities</h1>
+        <p class="page-subtitle">Create, edit, and manage Wire Bond Group activities</p>
+    </div>
+    <button class="btn btn-primary" onclick="toggleModal('createModal')">
+        <svg style="width:13px;height:13px;vertical-align:middle;" viewBox="0 0 20 20" fill="currentColor"><path d="M10 4a1 1 0 011 1v4h4a1 1 0 010 2h-4v4a1 1 0 01-2 0v-4H5a1 1 0 010-2h4V5a1 1 0 011-1z"/></svg>
+        New Activity
+    </button>
+</div>
+
+<!-- Activity Table -->
+<div class="card">
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Customer</th>
+                    <th>Device</th>
+                    <th>Category</th>
+                    <th>Engineers</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Progress</th>
+                    <th>Due Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in activities %}
+                {% set a = item.row %}
+                {% set pct = item.progress %}
+                <tr class="{% if a.is_urgent %}row-urgent{% endif %}">
+                    <td>
+                        <a href="{{ url_for('activity_detail', activity_id=a.id) }}">{{ a.title }}</a>
+                        {% if a.is_urgent %}<span class="urgent-badge-sm">!</span>{% endif %}
+                    </td>
+                    <td>{{ a.customer or '-' }}</td>
+                    <td>{{ a.device or '-' }}</td>
+                    <td>{{ a.category or '-' }}</td>
+                    <td><span class="engineer-type-badge eng-{{ (a.target_engineers or 'Both') | lower }}">{{ a.target_engineers or 'Both' }}</span></td>
+                    <td><span class="status-badge status-{{ a.status }}">{{ a.status | title }}</span></td>
+                    <td><span class="priority-badge priority-{{ a.priority }}">{{ a.priority | title }}</span></td>
+                    <td>
+                        {% if a.progress_type and a.progress_type != 'none' %}
+                        <span class="meta-pill" style="font-size:11px;">{{ progress_types.get(a.progress_type, a.progress_type) }}</span>
+                        {% if pct is not none %}
+                        <span style="font-size:11px;color:var(--text-secondary);margin-left:4px;">{{ pct | int }}%</span>
+                        {% endif %}
+                        {% else %}
+                        <span style="color:var(--text-light);font-size:11px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ a.due_date or '-' }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-outline"
+                                onclick='openEditModal(
+                                    {{ a.id }},
+                                    {{ a.title | tojson }},
+                                    {{ (a.customer or "") | tojson }},
+                                    {{ (a.device or "") | tojson }},
+                                    {{ (a.category or "") | tojson }},
+                                    {{ (a.description or "") | tojson }},
+                                    {{ a.status | tojson }},
+                                    {{ a.priority | tojson }},
+                                    {{ (a.due_date or "") | tojson }},
+                                    {{ 1 if a.is_urgent else 0 }},
+                                    {{ (a.progress_type or "none") | tojson }},
+                                    {{ a.progress_total or 0 }},
+                                    {{ (a.progress_unit or "") | tojson }},
+                                    {{ (a.target_engineers or "Both") | tojson }}
+                                )'>Edit</button>
+                            <button class="btn btn-sm btn-outline" onclick='openMentionModal({{ a.id }}, {{ a.title | tojson }})'>Mention</button>
+                            <form method="POST" action="{{ url_for('admin_delete_activity', activity_id=a.id) }}" class="inline-form" onsubmit="return confirm('Delete this activity and all its updates?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" class="text-center">No activities yet. Click "New Activity" to create one.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create Activity Modal -->
+<div id="createModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New Activity</h3>
+            <button class="modal-close" onclick="toggleModal('createModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin_create_activity') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" name="title" class="form-control" required placeholder="e.g., Calibration of 99 iconn machines">
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Customer</label>
+                        <input type="text" name="customer" class="form-control" placeholder="e.g., Intel, TSMC">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Device</label>
+                        <input type="text" name="device" class="form-control" placeholder="e.g., BGA, QFP">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Category</label>
+                        <input type="text" name="category" class="form-control" placeholder="e.g., Calibration, Maintenance">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Target Engineers</label>
+                        <select name="target_engineers" class="form-control">
+                            <option value="Both" selected>Both</option>
+                            <option value="Process">Process Engineers</option>
+                            <option value="Equipment">Equipment Engineers</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Priority</label>
+                        <select name="priority" class="form-control">
+                            <option value="low">Low</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Due Date</label>
+                        <input type="date" name="due_date" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_urgent" value="1">
+                        <span>Mark as Urgent</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Activity details and instructions..."></textarea>
+                </div>
+
+                <!-- Progress Tracking -->
+                <div class="progress-config-section">
+                    <div class="section-divider">
+                        <span>Progress Tracking</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Progress Type</label>
+                        <select name="progress_type" id="create_progress_type" class="form-control" onchange="onProgressTypeChange(this, 'create')">
+                            {% for key, label in progress_types.items() %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="form-hint">Choose how progress will be tracked for this activity.</span>
+                    </div>
+
+                    <!-- Numeric fields: machine_count / units_bonded -->
+                    <div id="create_numeric_fields" class="progress-extra-fields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>Target Total</label>
+                                <input type="number" name="progress_total" class="form-control" placeholder="e.g., 99" min="0" step="1">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>Unit Label</label>
+                                <input type="text" name="progress_unit" class="form-control" placeholder="e.g., machines, units, wafers">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom % hint -->
+                    <div id="create_custom_fields" class="progress-extra-fields" style="display:none;">
+                        <div class="form-group">
+                            <span class="form-hint progress-hint">Operators will enter a percentage (0–100%) when posting updates.</span>
+                        </div>
+                    </div>
+
+                    <!-- Checklist hint -->
+                    <div id="create_checklist_fields" class="progress-extra-fields" style="display:none;">
+                        <div class="form-group">
+                            <label>Initial Checklist Items <span style="font-weight:400;opacity:.7;">(one per line)</span></label>
+                            <textarea name="checklist_items" class="form-control" rows="4" placeholder="e.g.&#10;Machine A calibration&#10;Machine B calibration&#10;Final verification"></textarea>
+                            <span class="form-hint">Items can also be added later from the activity detail page.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="toggleModal('createModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Activity</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Activity Modal -->
+<div id="editModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Activity</h3>
+            <button class="modal-close" onclick="toggleModal('editModal')">&times;</button>
+        </div>
+        <form method="POST" id="editForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" name="title" id="edit_title" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Customer</label>
+                        <input type="text" name="customer" id="edit_customer" class="form-control">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Device</label>
+                        <input type="text" name="device" id="edit_device" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Category</label>
+                        <input type="text" name="category" id="edit_category" class="form-control">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Target Engineers</label>
+                        <select name="target_engineers" id="edit_target_engineers" class="form-control">
+                            <option value="Both">Both</option>
+                            <option value="Process">Process Engineers</option>
+                            <option value="Equipment">Equipment Engineers</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Status</label>
+                        <select name="status" id="edit_status" class="form-control">
+                            <option value="active">Active</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Priority</label>
+                        <select name="priority" id="edit_priority" class="form-control">
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Due Date</label>
+                        <input type="date" name="due_date" id="edit_due_date" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_urgent" id="edit_is_urgent" value="1">
+                        <span>Mark as Urgent</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="edit_description" class="form-control" rows="3"></textarea>
+                </div>
+
+                <!-- Progress Tracking -->
+                <div class="progress-config-section">
+                    <div class="section-divider">
+                        <span>Progress Tracking</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Progress Type</label>
+                        <select name="progress_type" id="edit_progress_type" class="form-control" onchange="onProgressTypeChange(this, 'edit')">
+                            {% for key, label in progress_types.items() %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="form-hint">Changing progress type will not delete existing progress data.</span>
+                    </div>
+
+                    <!-- Numeric fields -->
+                    <div id="edit_numeric_fields" class="progress-extra-fields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>Target Total</label>
+                                <input type="number" name="progress_total" id="edit_progress_total" class="form-control" min="0" step="1">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>Unit Label</label>
+                                <input type="text" name="progress_unit" id="edit_progress_unit" class="form-control" placeholder="e.g., machines, units">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom % hint -->
+                    <div id="edit_custom_fields" class="progress-extra-fields" style="display:none;">
+                        <div class="form-group">
+                            <span class="form-hint progress-hint">Operators will enter a percentage (0–100%) when posting updates.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="toggleModal('editModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Mention User Modal -->
+<div id="mentionModal" class="modal" style="display:none;">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Mention User on Activity</h3>
+            <button class="modal-close" onclick="toggleModal('mentionModal')">&times;</button>
+        </div>
+        <form method="POST" id="mentionForm">
+            <div class="modal-body">
+                <p class="mention-context">Activity: <strong id="mention_activity_title"></strong></p>
+                <div class="form-group">
+                    <label>Select User</label>
+                    <select name="user_id" class="form-control" required>
+                        <option value="">-- Select User --</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.full_name }} (Shift {{ u.shift }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea name="message" class="form-control" rows="3" placeholder="e.g., Please prioritize this task. Action needed." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="toggleModal('mentionModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Send Mention</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditModal(id, title, customer, device, category, description, status, priority, dueDate, isUrgent, progressType, progressTotal, progressUnit, targetEngineers) {
+    document.getElementById('editForm').action = '/admin/activities/' + id + '/edit';
+    document.getElementById('edit_title').value = title;
+    document.getElementById('edit_customer').value = customer;
+    document.getElementById('edit_device').value = device;
+    document.getElementById('edit_category').value = category;
+    document.getElementById('edit_target_engineers').value = targetEngineers || 'Both';
+    document.getElementById('edit_description').value = description;
+    document.getElementById('edit_status').value = status;
+    document.getElementById('edit_priority').value = priority;
+    document.getElementById('edit_due_date').value = dueDate;
+    document.getElementById('edit_is_urgent').checked = isUrgent == 1;
+    document.getElementById('edit_progress_type').value = progressType || 'none';
+    document.getElementById('edit_progress_total').value = progressTotal || '';
+    document.getElementById('edit_progress_unit').value = progressUnit || '';
+    onProgressTypeChange(document.getElementById('edit_progress_type'), 'edit');
+    toggleModal('editModal');
+}
+
+function openMentionModal(activityId, activityTitle) {
+    document.getElementById('mentionForm').action = '/admin/activities/' + activityId + '/mention';
+    document.getElementById('mention_activity_title').textContent = activityTitle;
+    toggleModal('mentionModal');
+}
+</script>
+{% endblock %}

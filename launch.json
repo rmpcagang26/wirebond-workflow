@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wirebond-app",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["app.py"],
+      "port": 5000,
+      "cwd": "C:\\Users\\Ryan Mikko\\Desktop\\Work\\Automation\\WireBondActivityFlow"
+    }
+  ]
+}

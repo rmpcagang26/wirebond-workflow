@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">{{ now.strftime('%A, %B %d, %Y') }} &mdash; Shift {{ current_shift }} ({{ time_slot }})</p>
+    </div>
+    <a href="{{ url_for('generate_report') }}" class="btn btn-primary">
+        <svg style="width:14px;height:14px;vertical-align:middle;margin-right:4px;" viewBox="0 0 20 20"><path d="M4 3h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 7h8M6 10h8M6 13h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Shift Report
+    </a>
+</div>
+
+<!-- Announcements -->
+{% if announcements %}
+<div class="announcements-section" id="announcements-section">
+    {% for ann in announcements %}
+    <div class="announcement-card ann-{{ ann.priority }}" id="ann-{{ ann.id }}">
+        <div class="ann-icon">
+            {% if ann.priority == 'urgent' %}
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2L1 18h18L10 2zm0 4v6m0 2v2"/><path d="M10 6v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="15" r="1" fill="#fff"/></svg>
+            {% elif ann.priority == 'warning' %}
+                <svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="9"/><path d="M10 5v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14" r="1.2" fill="#fff"/></svg>
+            {% else %}
+                <svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="9"/><path d="M10 5v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14" r="1.2" fill="#fff"/></svg>
+            {% endif %}
+        </div>
+        <div class="ann-body">
+            <strong class="ann-title">{{ ann.title }}</strong>
+            {% if ann.content %}<p class="ann-text">{{ ann.content }}</p>{% endif %}
+        </div>
+        <button class="ann-dismiss" onclick="dismissAnnouncement({{ ann.id }})" title="Dismiss">&times;</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card stat-active">
+        <div class="stat-number">{{ stats.active }}</div>
+        <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-card stat-overdue">
+        <div class="stat-number">{{ stats.overdue }}</div>
+        <div class="stat-label">Overdue</div>
+    </div>
+    <div class="stat-card stat-completed">
+        <div class="stat-number">{{ stats.completed }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+</div>
+
+<!-- Shift Calendar -->
+<div class="calendar-section">
+    <div class="calendar-card">
+        <div class="calendar-header">
+            <h3>
+                <svg style="width:15px;height:15px;vertical-align:middle;margin-right:6px;opacity:0.5;" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="4" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 8h16M6 2v4M14 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Shift Calendar
+            </h3>
+            <div class="calendar-nav">
+                <button class="calendar-nav-btn" onclick="navigateCalendar('prev')">&larr; Prev</button>
+                <span class="calendar-month-label" id="cal-month-label">{{ now.strftime('%B %Y') }}</span>
+                <button class="calendar-nav-btn" onclick="navigateCalendar('next')">Next &rarr;</button>
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="calendar-grid">
+                <thead>
+                    <tr>
+                        <th>WW</th>
+                        <th>Mon</th>
+                        <th>Tue</th>
+                        <th>Wed</th>
+                        <th>Thu</th>
+                        <th>Fri</th>
+                        <th>Sat</th>
+                        <th>Sun</th>
+                    </tr>
+                </thead>
+                <tbody id="cal-tbody">
+                    <!-- Populated via JS on load -->
+                </tbody>
+            </table>
+        </div>
+        <div class="calendar-legend">
+            <span class="calendar-legend-item"><span class="cal-crew-tag crew-a" style="width:auto;padding:0 4px;">A:D</span> Crew A Day</span>
+            <span class="calendar-legend-item"><span class="cal-crew-tag crew-b" style="width:auto;padding:0 4px;">B:N</span> Crew B Night</span>
+            <span class="calendar-legend-item"><span class="cal-crew-tag crew-c" style="width:auto;padding:0 4px;">C:D</span> Crew C Day</span>
+            <span class="calendar-legend-item"><span class="cal-crew-tag crew-d" style="width:auto;padding:0 4px;">D:N</span> Crew D Night</span>
+            <span class="calendar-legend-item"><span class="cal-crew-tag crew-off" style="width:auto;padding:0 4px;">X:O</span> Off</span>
+            <span class="calendar-legend-item"><span class="cal-crew-tag crew-rep" style="width:auto;padding:0 4px;">X:R</span> REP Day</span>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <div class="filter-tabs">
+        <a href="{{ url_for('dashboard', status='all') }}" class="filter-tab {% if status_filter == 'all' %}active{% endif %}">All</a>
+        <a href="{{ url_for('dashboard', status='active') }}" class="filter-tab {% if status_filter == 'active' %}active{% endif %}">Active</a>
+        <a href="{{ url_for('dashboard', status='overdue') }}" class="filter-tab {% if status_filter == 'overdue' %}active{% endif %}">Overdue</a>
+        <a href="{{ url_for('dashboard', status='completed') }}" class="filter-tab {% if status_filter == 'completed' %}active{% endif %}">Completed</a>
+    </div>
+    <form method="GET" action="{{ url_for('dashboard') }}" class="search-form">
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        <input type="text" name="q" value="{{ search_q }}" class="form-control search-input" placeholder="Search activities...">
+        <button type="submit" class="btn btn-sm btn-primary">Search</button>
+    </form>
+</div>
+
+<!-- Activities Grid -->
+<div class="activities-grid">
+    {% for item in activities %}
+    {% set a = item.row %}
+    {% set pct = item.progress %}
+    <a href="{{ url_for('activity_detail', activity_id=a.id) }}"
+       class="activity-card {% if a.is_urgent %}urgent{% endif %} {% if a.status == 'overdue' %}overdue{% endif %}">
+
+        <!-- Status row -->
+        <div class="activity-card-header">
+            <div class="activity-status-row">
+                <span class="status-badge status-{{ a.status }}">{{ a.status | title }}</span>
+                {% if a.is_urgent %}<span class="urgent-badge">URGENT</span>{% endif %}
+                <span class="priority-badge priority-{{ a.priority }}">{{ a.priority | title }}</span>
+            </div>
+            {% if a.due_date %}<span class="due-date">Due: {{ a.due_date }}</span>{% endif %}
+        </div>
+
+        <!-- Title + progress chart side by side -->
+        <div class="card-title-row">
+            <h3 class="activity-title">{{ a.title }}</h3>
+            {% if pct is not none %}
+            <div class="progress-donut-wrap">
+                {% set r = 22 %}
+                {% set circ = 2 * 3.14159 * r %}
+                {% set dash = (pct / 100) * circ %}
+                {% set gap  = circ - dash %}
+                {% if pct >= 75 %}
+                    {% set pcolor = '#27AE60' %}
+                {% elif pct >= 40 %}
+                    {% set pcolor = '#F39C12' %}
+                {% else %}
+                    {% set pcolor = '#E74C3C' %}
+                {% endif %}
+                <svg class="progress-donut" viewBox="0 0 52 52">
+                    <circle cx="26" cy="26" r="{{ r }}" fill="none" stroke="#E8ECF0" stroke-width="5"/>
+                    <circle cx="26" cy="26" r="{{ r }}" fill="none"
+                            stroke="{{ pcolor }}" stroke-width="5"
+                            stroke-dasharray="{{ '%.1f'|format(dash) }} {{ '%.1f'|format(gap) }}"
+                            stroke-linecap="round"
+                            transform="rotate(-90 26 26)"/>
+                    <text x="26" y="30" text-anchor="middle" font-size="9" font-weight="700" fill="{{ pcolor }}">{{ pct | int }}%</text>
+                </svg>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Meta -->
+        <div class="activity-meta">
+            {% if a.customer %}<span class="meta-item"><strong>Customer:</strong> {{ a.customer }}</span>{% endif %}
+            {% if a.device %}<span class="meta-item"><strong>Device:</strong> {{ a.device }}</span>{% endif %}
+            {% if a.category %}<span class="meta-item"><strong>Category:</strong> {{ a.category }}</span>{% endif %}
+            {% if a.target_engineers and a.target_engineers != 'Both' %}
+            <span class="meta-item"><span class="engineer-type-badge eng-{{ a.target_engineers | lower }}">{{ a.target_engineers }} Eng.</span></span>
+            {% endif %}
+        </div>
+
+        <!-- Progress bar (if applicable) -->
+        {% if pct is not none and a.progress_type != 'done_not_done' %}
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill {% if pct >= 75 %}fill-green{% elif pct >= 40 %}fill-orange{% else %}fill-red{% endif %}"
+                 style="width:{{ pct }}%"></div>
+        </div>
+        <div class="progress-label-row">
+            {% if a.progress_type == 'custom' %}
+            <span class="progress-label">{{ pct | int }}% complete</span>
+            {% elif a.progress_type in ('machine_count','units_bonded') %}
+            <span class="progress-label">{{ a.progress_current | int }} / {{ a.progress_total | int }} {{ a.progress_unit }}</span>
+            {% endif %}
+        </div>
+        {% elif pct is not none and a.progress_type == 'done_not_done' %}
+        <div class="done-badge-row">
+            {% if pct == 100 %}
+            <span class="done-badge done">&#10003; Done</span>
+            {% else %}
+            <span class="done-badge not-done">&#9675; Not Yet</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Latest update -->
+        {% if a.latest_update %}
+        <div class="activity-latest">
+            <div class="latest-label">Latest Update</div>
+            <p class="latest-text">{{ a.latest_update[:160] }}{% if a.latest_update|length > 160 %}…{% endif %}</p>
+            <span class="latest-meta">by {{ a.latest_update_by }} &mdash; {{ a.latest_update_at }}</span>
+        </div>
+        {% else %}
+        <div class="activity-latest no-updates"><p class="latest-text">No updates yet</p></div>
+        {% endif %}
+
+        <div class="activity-footer">
+            <span>{{ a.update_count }} update{{ 's' if a.update_count != 1 }}</span>
+            <span>{{ a.created_at }}</span>
+        </div>
+    </a>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">&#128203;</div>
+        <h3>No activities found</h3>
+        <p>{% if session.get('role') == 'admin' %}Go to <a href="{{ url_for('admin_activities') }}">Manage Activities</a> to create one.{% else %}No activities assigned yet. Contact your admin.{% endif %}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var now = new Date();
+    initCalendar(now.getFullYear(), now.getMonth() + 1);
+    fetchCalendarMonth(calCurrentYear, calCurrentMonth);
+});
+</script>
+{% endblock %}
