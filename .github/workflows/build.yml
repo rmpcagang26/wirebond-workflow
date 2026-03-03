@@ -24,7 +24,7 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller launcher.py --onefile --noconsole
+        pyinstaller launcher.py --onefile
 
     - name: Upload EXE
       uses: actions/upload-artifact@v4
