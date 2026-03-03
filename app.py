@@ -1398,4 +1398,4 @@ if __name__ == '__main__':
     print("  Local:   http://127.0.0.1:5000")
     print("  Network: http://0.0.0.0:5000  (accessible on LAN)")
     print("=" * 60 + "\n")
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host='127.0.0.1', port=5000, debug=True, use_reloader=False)
